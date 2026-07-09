@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LPU GPA / CGPA Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FDFBF5;
+    --paper-alt:#F4EFE1;
+    --ink:#242018;
+    --ink-soft:#6B6252;
+    --rule:#E2D9C3;
+    --lpu-orange:#E07A2C;
+    --lpu-red:#B23A2E;
+    --lpu-blue:#2C5F8A;
+    --stamp-green:#2F6B4F;
+    --fail-red:#B23A2E;
+    --amber:#C08A2E;
+    --shadow: 0 1px 0 rgba(36,32,24,0.05);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 15% 8%, rgba(224,122,44,0.07), transparent 40%),
+      radial-gradient(circle at 85% 92%, rgba(44,95,138,0.08), transparent 45%),
+      #E9E2CE;
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:36px 16px 60px;
+  }
+  /* the whole document sits on a raised "sheet" so it reads like a real
+     printed report resting on a desk, not a flat webpage */
+  .sheet{
+    max-width:1000px;
+    margin:0 auto;
+    background:var(--paper);
+    border-radius:10px;
+    box-shadow:
+      0 1px 2px rgba(36,32,24,0.06),
+      0 18px 45px -12px rgba(36,32,24,0.28),
+      0 6px 18px -6px rgba(36,32,24,0.14);
+    overflow:hidden;
+    animation: sheetIn .5s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes sheetIn{
+    from{opacity:0; transform:translateY(14px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .tricolor-bar{
+    height:6px;
+    background:linear-gradient(90deg, var(--lpu-orange) 0 33.3%, var(--lpu-red) 33.3% 66.6%, var(--lpu-blue) 66.6% 100%);
+  }
+  .page{
+    max-width:980px;
+    margin:0 auto;
+    padding:40px 32px 90px;
+    position:relative;
+  }
+  .masthead{
+    text-align:center;
+    padding-bottom:24px;
+    margin-bottom:30px;
+    border-bottom:2px solid var(--rule);
+  }
+  .masthead .crest{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:0.28em;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    padding:5px 16px;
+    border:1px solid var(--rule);
+    border-radius:20px;
+    background:var(--paper-alt);
+  }
+  .crest .l{color:var(--lpu-orange);}
+  .crest .p{color:var(--lpu-red);}
+  .crest .u{color:var(--lpu-blue);}
+  .masthead h1{
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    font-size:clamp(30px,4vw,42px);
+    margin:16px 0 8px;
+    letter-spacing:0.01em;
+    background:linear-gradient(100deg, var(--ink) 40%, var(--lpu-blue));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .masthead p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:14.5px;
+  }
+  .scale-strip{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:36px;
+  }
+  .scale-cell{
+    flex:1 1 118px;
+    padding:10px 12px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    border-radius:6px;
+    border:1px solid var(--rule);
+    background:var(--paper-alt);
+    border-left:3px solid var(--chip-color, var(--rule));
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .scale-cell:hover{
+    transform:translateY(-2px);
+    box-shadow:0 6px 14px -6px rgba(36,32,24,0.25);
+  }
+  .scale-cell .rng{color:var(--ink-soft); display:block; font-size:11px; margin-bottom:3px;}
+  .scale-cell .lg{font-weight:700; font-size:16px; color:var(--chip-color, var(--ink));}
+  .scale-cell .gp{color:var(--ink-soft); font-weight:600;}
+
+  .term{
+    margin-bottom:26px;
+    border:1px solid var(--rule);
+    background:#fff;
+    border-radius:8px;
+    box-shadow:0 2px 10px -4px rgba(36,32,24,0.10);
+    overflow:hidden;
+    transition: box-shadow .2s ease, transform .2s ease;
+  }
+  .term:hover{
+    box-shadow:0 10px 26px -8px rgba(36,32,24,0.18);
+    transform:translateY(-1px);
+  }
+  .term-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:15px 20px;
+    background:linear-gradient(135deg, var(--paper-alt), #EFE8D5);
+    border-bottom:1px solid var(--rule);
+  }
+  .term-head .term-title-wrap{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .term-title{
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    font-size:19px;
+    background:transparent;
+    border:none;
+    border-bottom:1px dashed transparent;
+    color:var(--ink);
+    width:140px;
+  }
+  .term-title:focus{outline:none; border-bottom:1px dashed var(--lpu-orange);}
+  .term-badges{display:flex; gap:22px; align-items:center;}
+  .term-metric{
+    text-align:right;
+    font-family:'JetBrains Mono', monospace;
+  }
+  .term-metric .num{font-size:21px; font-weight:700; color:var(--lpu-blue);}
+  .term-metric .lbl{display:block; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-soft);}
+  .icon-btn{
+    background:none;
+    border:1px solid var(--rule);
+    color:var(--ink-soft);
+    width:26px; height:26px;
+    border-radius:50%;
+    cursor:pointer;
+    font-size:14px;
+    line-height:1;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    transition: all .15s ease;
+  }
+  .icon-btn:hover{border-color:var(--lpu-red); color:#fff; background:var(--lpu-red); transform:rotate(90deg);}
+
+  table{width:100%; border-collapse:collapse;}
+  thead th{
+    text-align:left;
+    font-size:11px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    font-weight:600;
+    padding:10px 20px 8px;
+    border-bottom:1px solid var(--rule);
+  }
+  thead th.num, tbody td.num{text-align:right;}
+  tbody tr{transition: background .12s ease;}
+  tbody tr:hover{background:var(--paper-alt);}
+  tbody td{
+    padding:10px 20px;
+    border-bottom:1px solid var(--rule);
+    font-size:14px;
+    vertical-align:middle;
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  .course-input{
+    width:100%;
+    border:none;
+    background:transparent;
+    font-size:14px;
+    font-family:'Inter', sans-serif;
+    color:var(--ink);
+    padding:2px 0;
+    border-bottom:1px solid transparent;
+  }
+  .course-input:focus{outline:none; border-bottom:1px solid var(--lpu-orange);}
+  .marks-input, .credit-input{
+    width:64px;
+    text-align:right;
+    border:1px solid var(--rule);
+    border-radius:5px;
+    padding:6px 8px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    background:var(--paper);
+    color:var(--ink);
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .marks-input:focus, .credit-input:focus{outline:none; border-color:var(--lpu-orange); box-shadow:0 0 0 3px rgba(224,122,44,0.15);}
+  .credit-input{width:52px;}
+  .grade-pill{
+    display:inline-block;
+    min-width:36px;
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:13px;
+    padding:4px 9px;
+    border-radius:5px;
+    background:color-mix(in srgb, var(--pill-color, var(--rule)) 12%, var(--paper));
+    color:var(--pill-color, var(--ink-soft));
+    border:1px solid var(--pill-color, var(--rule));
+  }
+  .points-val{font-family:'JetBrains Mono', monospace; color:var(--ink-soft);}
+  .row-remove{
+    background:none; border:none; color:var(--rule); cursor:pointer; font-size:15px;
+    transition: color .15s ease, transform .15s ease;
+  }
+  .row-remove:hover{color:var(--lpu-red); transform:scale(1.15);}
+  .term-foot{
+    padding:12px 20px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .add-course-btn{
+    background:none;
+    border:1px dashed var(--rule);
+    color:var(--ink-soft);
+    font-size:12.5px;
+    padding:7px 14px;
+    border-radius:5px;
+    cursor:pointer;
+    font-family:'Inter', sans-serif;
+    transition: all .15s ease;
+  }
+  .add-course-btn:hover{border-color:var(--lpu-orange); color:var(--lpu-orange); background:var(--paper-alt);}
+
+  .add-term-btn{
+    display:block;
+    margin:0 auto 46px;
+    background:none;
+    border:1px dashed var(--rule);
+    color:var(--ink-soft);
+    font-size:13px;
+    padding:11px 22px;
+    border-radius:6px;
+    cursor:pointer;
+    font-family:'Inter', sans-serif;
+    transition: all .15s ease;
+  }
+  .add-term-btn:hover{border-color:var(--lpu-orange); color:var(--lpu-orange); background:var(--paper-alt); transform:translateY(-1px);}
+
+  .gauge-wrap{
+    position:sticky;
+    bottom:18px;
+    display:flex;
+    justify-content:center;
+    pointer-events:none;
+  }
+  .gauge-card{
+    pointer-events:auto;
+    background:var(--paper);
+    border:1px solid var(--rule);
+    border-radius:16px;
+    padding:14px 26px 8px;
+    box-shadow:0 10px 30px -8px rgba(36,32,24,0.30), 0 2px 6px rgba(36,32,24,0.10);
+    position:relative;
+    animation: sheetIn .5s cubic-bezier(.2,.8,.2,1);
+  }
+  .gauge-svg{display:block; width:200px; height:110px;}
+  .gauge-track{fill:none; stroke:var(--rule); stroke-width:13; stroke-linecap:round;}
+  .gauge-fill{
+    fill:none;
+    stroke:var(--stamp-green);
+    stroke-width:13;
+    stroke-linecap:round;
+    transition: stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1), stroke .3s ease;
+  }
+  .gauge-center{
+    position:absolute;
+    left:0; right:0;
+    bottom:14px;
+    text-align:center;
+    font-family:'Playfair Display', serif;
+  }
+  .gauge-cgpa{font-size:30px; font-weight:700; font-family:'JetBrains Mono', monospace; color:var(--ink); letter-spacing:0.01em;}
+  .gauge-lbl{font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:1px;}
+  .gauge-pct{font-size:11.5px; margin-top:1px; font-family:'JetBrains Mono', monospace; color:var(--ink-soft);}
+
+  .note{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:12px;
+    margin-top:-24px;
+    margin-bottom:40px;
+  }
+
+  @media (max-width: 620px){
+    thead th:nth-child(3), tbody td:nth-child(3){display:none;} /* hide credit col header spacing tweaks handled responsively below */
+    .term-badges{gap:10px;}
+    .marks-input{width:52px;}
+    .credit-input{width:44px;}
+    tbody td{padding:8px 10px;}
+    thead th{padding:8px 10px 6px;}
+    .term-head{padding:12px;}
+  }
+
+  /* ---- Student info card ---- */
+  .student-card{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px 28px;
+    border:1px solid var(--rule);
+    background:linear-gradient(135deg, var(--paper-alt), #EFE8D5);
+    border-radius:8px;
+    padding:18px 22px;
+    margin-bottom:28px;
+    box-shadow:0 2px 10px -4px rgba(36,32,24,0.08);
+  }
+  .student-field{display:flex; flex-direction:column; gap:4px;}
+  .student-field label{
+    font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-soft);
+  }
+  .student-field input{
+    border:none; border-bottom:1.5px solid var(--rule);
+    background:transparent; font-family:'Inter', sans-serif; font-size:14px;
+    color:var(--ink); padding:4px 0;
+    transition: border-color .15s ease;
+  }
+  .student-field input:focus{outline:none; border-bottom-color:var(--lpu-orange);}
+  .student-field input::placeholder{color:#B7AC91;}
+  @media (max-width:620px){ .student-card{grid-template-columns:1fr;} }
+
+  /* ---- Print action button ---- */
+  .action-row{
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    margin-bottom:8px;
+  }
+  .print-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:linear-gradient(135deg, var(--ink), #3A3324);
+    color:var(--paper);
+    border:none;
+    padding:12px 26px;
+    border-radius:8px;
+    font-family:'Inter', sans-serif;
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    letter-spacing:0.02em;
+    box-shadow:0 6px 16px -6px rgba(36,32,24,0.4);
+    transition: transform .15s ease, box-shadow .15s ease, background .2s ease;
+  }
+  .print-btn:hover{
+    background:linear-gradient(135deg, var(--lpu-red), #8A2C22);
+    transform:translateY(-2px);
+    box-shadow:0 10px 22px -6px rgba(178,58,46,0.45);
+  }
+  .print-btn:active{transform:translateY(0);}
+
+  /* ---- Print-only transcript (hidden on screen) ---- */
+  #printArea{display:none;}
+
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{
+      display:block;
+      position:absolute;
+      top:0; left:0; width:100%;
+      padding:20px 34px;
+      font-family:'Inter', sans-serif;
+      color:#1a1a1a;
+    }
+    .print-head{
+      text-align:center;
+      border-bottom:2px double #1a1a1a;
+      padding-bottom:12px;
+      margin-bottom:16px;
+    }
+    .print-head .p-crest{
+      font-family:'Playfair Display', serif;
+      font-weight:700;
+      font-size:12px;
+      letter-spacing:0.22em;
+      text-transform:uppercase;
+      color:#555;
+    }
+    .print-head h1{
+      font-family:'Playfair Display', serif;
+      font-size:24px;
+      margin:8px 0 4px;
+    }
+    .print-head p{margin:0; font-size:11.5px; color:#555;}
+    .print-info{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:4px 24px;
+      font-size:12px;
+      margin-bottom:18px;
+    }
+    .print-info div span.k{color:#666; margin-right:5px;}
+    .print-term{margin-bottom:16px; page-break-inside:avoid;}
+    .print-term h3{
+      font-family:'Playfair Display', serif;
+      font-size:14px;
+      margin:0 0 6px;
+      display:flex;
+      justify-content:space-between;
+      border-bottom:1px solid #ccc;
+      padding-bottom:4px;
+    }
+    .print-term table{width:100%; border-collapse:collapse; font-size:11.5px;}
+    .print-term th, .print-term td{
+      border:1px solid #ccc;
+      padding:5px 8px;
+      text-align:left;
+    }
+    .print-term th.num, .print-term td.num{text-align:right;}
+    .print-summary{
+      border-top:2px double #1a1a1a;
+      margin-top:14px;
+      padding-top:10px;
+      display:flex;
+      justify-content:space-between;
+      font-size:13px;
+      font-weight:700;
+    }
+    .print-footer{
+      margin-top:26px;
+      font-size:9.5px;
+      color:#666;
+      border-top:1px solid #ccc;
+      padding-top:8px;
+    }
+    .print-footer p{margin:2px 0;}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+<div class="tricolor-bar"></div>
+<div class="page">
+
+  <div class="masthead">
+    <div class="crest"><span class="l">L</span><span class="p">P</span><span class="u">U</span> &nbsp;Grade Office</div>
+    <h1>GPA &amp; CGPA Calculator</h1>
+    <p>Enter marks out of 100 for each course — grade, TGPA and CGPA update as you type.</p>
+  </div>
+
+  <div class="student-card" id="studentCard">
+    <div class="student-field"><label>Student Name</label><input id="stuName" placeholder="Enter name" /></div>
+    <div class="student-field"><label>Registration No.</label><input id="stuReg" placeholder="Enter registration no." /></div>
+    <div class="student-field"><label>Programme</label><input id="stuProg" placeholder="Enter programme" /></div>
+    <div class="student-field"><label>Father's Name</label><input id="stuFather" placeholder="Enter father's name" /></div>
+    <div class="student-field"><label>Mother's Name</label><input id="stuMother" placeholder="Enter mother's name" /></div>
+    <div class="student-field"><label>Mode</label><input id="stuMode" placeholder="Regular / Distance" /></div>
+  </div>
+
+  <div class="scale-strip" id="scaleStrip"></div>
+
+  <div id="termsWrap"></div>
+
+  <button class="add-term-btn" id="addTermBtn">+ Add another term</button>
+  <p class="note">CGPA = ∑(Credit × Grade Point) ÷ ∑Credit, across every course entered above · Equivalent % = CGPA × 10</p>
+
+  <div class="action-row">
+    <button class="print-btn" id="printBtn">🖨️ Print / Save as PDF</button>
+  </div>
+
+  <div class="gauge-wrap">
+    <div class="gauge-card">
+      <svg viewBox="0 0 200 110" class="gauge-svg">
+        <path id="gaugeTrack" class="gauge-track" d="M14,100 A86,86 0 0,1 186,100"></path>
+        <path id="gaugeFill" class="gauge-fill" d="M14,100 A86,86 0 0,1 186,100"></path>
+      </svg>
+      <div class="gauge-center">
+        <div class="gauge-lbl">Overall CGPA</div>
+        <div class="gauge-cgpa" id="stampCgpa">0.00</div>
+        <div class="gauge-pct" id="stampPct">0% equivalent</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- Print-only transcript view, built fresh from current state right before printing -->
+<div id="printArea"></div>
+
+<script>
+const SCALE = [
+  {min:90, max:100, letter:'O',  points:10, desc:'Outstanding', color:'#2F6B4F'},
+  {min:80, max:89,  letter:'A+', points:9,  desc:'Excellent', color:'#3E7A52'},
+  {min:70, max:79,  letter:'A',  points:8,  desc:'Very Good', color:'#2C5F8A'},
+  {min:60, max:69,  letter:'B+', points:7,  desc:'Good', color:'#3E71A0'},
+  {min:50, max:59,  letter:'B',  points:6,  desc:'Above Average', color:'#C08A2E'},
+  {min:40, max:49,  letter:'C',  points:5,  desc:'Average / Pass', color:'#B2662E'},
+  {min:0,  max:39,  letter:'F',  points:0,  desc:'Fail', color:'#B23A2E'},
+];
+
+function gradeFor(marks){
+  if (marks === '' || marks === null || isNaN(marks)) return null;
+  marks = Math.max(0, Math.min(100, Number(marks)));
+  for (const row of SCALE){
+    if (marks >= row.min && marks <= row.max) return row;
+  }
+  return SCALE[SCALE.length-1];
+}
+
+// Pre-filled from Shawkrit's actual transcript (marks left blank for user to fill in)
+let state = {
+  terms: [
+    {
+      title: 'Term I',
+      courses: [
+        {name:'CHE110 :: Environmental Studies', credit:2, marks:''},
+        {name:'CSE111 :: Orientation to Computing-I', credit:2, marks:''},
+        {name:'CSE326 :: Internet Programming Laboratory', credit:2, marks:''},
+        {name:'ECE249 :: Basic Electrical and Electronics Engineering', credit:3, marks:''},
+        {name:'ECE279 :: Basic Electrical and Electronics Engg. Lab', credit:1, marks:''},
+        {name:'INT108 :: Python Programming', credit:4, marks:''},
+        {name:'MTH165 :: Mathematics for Engineers', credit:4, marks:''},
+      ]
+    },
+    {
+      title: 'Term II',
+      courses: [
+        {name:'CSE101 :: Computer Programming', credit:4, marks:''},
+        {name:'CSE121 :: Orientation to Computing-II', credit:2, marks:''},
+        {name:'CSE320 :: Software Engineering', credit:3, marks:''},
+        {name:'INT306 :: Database Management Systems', credit:4, marks:''},
+        {name:'MEC136 :: Engineering Drawing with AutoCAD', credit:4, marks:''},
+        {name:'MTH166 :: Differential Equations and Vector Calculus', credit:4, marks:''},
+        {name:'PEL121 :: Communication Skills-I', credit:3, marks:''},
+        {name:'PHY110 :: Engineering Physics', credit:3, marks:''},
+      ]
+    }
+  ]
+};
+
+const termsWrap = document.getElementById('termsWrap');
+const scaleStrip = document.getElementById('scaleStrip');
+
+function renderScale(){
+  scaleStrip.innerHTML = SCALE.map(r => `
+    <div class="scale-cell" style="--chip-color:${r.color}">
+      <span class="rng">${r.min}–${r.max === 100 ? 100 : r.max}</span>
+      <span class="lg">${r.letter}</span>
+      &nbsp;<span class="gp">${r.points} pt</span>
+      <span class="rng">${r.desc}</span>
+    </div>
+  `).join('');
+}
+
+function computeTerm(term){
+  let weighted = 0, credits = 0, hasAny = false;
+  term.courses.forEach(c => {
+    const g = gradeFor(c.marks);
+    const cr = Number(c.credit) || 0;
+    if (g){ weighted += g.points * cr; credits += cr; hasAny = true; }
+  });
+  const tgpa = credits > 0 ? weighted/credits : 0;
+  return {tgpa, credits, weighted, hasAny};
+}
+
+function computeOverall(){
+  let weighted = 0, credits = 0;
+  state.terms.forEach(t => {
+    t.courses.forEach(c => {
+      const g = gradeFor(c.marks);
+      const cr = Number(c.credit) || 0;
+      if (g){ weighted += g.points * cr; credits += cr; }
+    });
+  });
+  return credits > 0 ? weighted/credits : 0;
+}
+
+// Full rebuild: only used when rows/terms are added or removed (structural changes).
+// Typing in an input never calls this — see updateComputedOnly() below — so focus
+// and cursor position are left completely alone by the browser while typing.
+function render(){
+  termsWrap.innerHTML = state.terms.map((term, ti) => {
+    const rows = term.courses.map((c, ci) => `
+        <tr>
+          <td><input class="course-input" data-ti="${ti}" data-ci="${ci}" data-field="name" value="${c.name.replace(/"/g,'&quot;')}" /></td>
+          <td class="num"><input class="marks-input" type="number" min="0" max="100" placeholder="0-100" data-ti="${ti}" data-ci="${ci}" data-field="marks" value="${c.marks}" /></td>
+          <td class="num"><input class="credit-input" type="number" min="0" step="0.5" data-ti="${ti}" data-ci="${ci}" data-field="credit" value="${c.credit}" /></td>
+          <td class="num" id="grade-${ti}-${ci}"></td>
+          <td class="num points-val" id="points-${ti}-${ci}"></td>
+          <td class="num"><button class="row-remove" data-ti="${ti}" data-ci="${ci}" title="Remove course">✕</button></td>
+        </tr>
+      `).join('');
+
+    return `
+      <div class="term">
+        <div class="term-head">
+          <div class="term-title-wrap">
+            <input class="term-title" data-ti="${ti}" data-field="title" value="${term.title}" />
+            <button class="icon-btn" data-ti="${ti}" data-action="removeTerm" title="Remove term">✕</button>
+          </div>
+          <div class="term-badges">
+            <div class="term-metric">
+              <span class="num" id="tgpa-${ti}">—</span>
+              <span class="lbl">TGPA</span>
+            </div>
+            <div class="term-metric">
+              <span class="num" id="tpct-${ti}">—</span>
+              <span class="lbl">Equiv.</span>
+            </div>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Course</th>
+              <th class="num">Marks</th>
+              <th class="num">Credit</th>
+              <th class="num">Grade</th>
+              <th class="num">Points</th>
+              <th class="num"></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="term-foot">
+          <button class="add-course-btn" data-ti="${ti}" data-action="addCourse">+ Add course</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  attachHandlers();
+  updateComputedOnly();
+}
+
+// Lightweight update: only touches text content of grade pills, points, TGPA,
+// and the overall stamp. Never rebuilds or replaces the <input> elements, so
+// whatever the user is typing (and where their cursor is) is left untouched.
+function updateComputedOnly(){
+  state.terms.forEach((term, ti) => {
+    const {tgpa, hasAny} = computeTerm(term);
+    term.courses.forEach((c, ci) => {
+      const g = gradeFor(c.marks);
+      const gradeCell = document.getElementById(`grade-${ti}-${ci}`);
+      const pointsCell = document.getElementById(`points-${ti}-${ci}`);
+      if (gradeCell){
+        gradeCell.innerHTML = g
+          ? `<span class="grade-pill" style="--pill-color:${g.color}">${g.letter}</span>`
+          : `<span class="grade-pill" style="--pill-color:${'#C9BFA3'}; color:#C9BFA3;">—</span>`;
+      }
+      if (pointsCell){
+        pointsCell.textContent = g ? `${g.points}.0` : '—';
+      }
+    });
+    const tgpaEl = document.getElementById(`tgpa-${ti}`);
+    const tpctEl = document.getElementById(`tpct-${ti}`);
+    if (tgpaEl) tgpaEl.textContent = hasAny ? tgpa.toFixed(2) : '—';
+    if (tpctEl) tpctEl.textContent = hasAny ? (tgpa*10).toFixed(1)+'%' : '—';
+  });
+
+  const cgpa = computeOverall();
+  document.getElementById('stampCgpa').textContent = cgpa.toFixed(2);
+  document.getElementById('stampPct').textContent = (cgpa*10).toFixed(1) + '% equivalent';
+  updateGauge(cgpa);
+}
+
+// Fills the semicircular gauge proportional to cgpa/10 and colors it by band:
+// red (fail range), amber (average), blue (good/very good), green (excellent+).
+function updateGauge(cgpa){
+  const fill = document.getElementById('gaugeFill');
+  if (!fill) return;
+  const len = fill.getTotalLength();
+  const fraction = Math.max(0, Math.min(1, cgpa / 10));
+  fill.style.strokeDasharray = `${len}`;
+  fill.style.strokeDashoffset = `${len * (1 - fraction)}`;
+  let color = 'var(--fail-red)';
+  if (cgpa >= 8) color = 'var(--stamp-green)';
+  else if (cgpa >= 6) color = 'var(--lpu-blue)';
+  else if (cgpa >= 4) color = 'var(--amber)';
+  fill.style.stroke = color;
+}
+
+function attachHandlers(){
+  termsWrap.querySelectorAll('input[data-field]').forEach(el => {
+    el.addEventListener('input', (e) => {
+      const ti = e.target.dataset.ti, ci = e.target.dataset.ci, field = e.target.dataset.field;
+      if (field === 'title'){
+        state.terms[ti].title = e.target.value;
+        return;
+      }
+      if (field === 'marks'){
+        state.terms[ti].courses[ci].marks = e.target.value;
+      } else if (field === 'credit'){
+        state.terms[ti].courses[ci].credit = e.target.value;
+      } else if (field === 'name'){
+        state.terms[ti].courses[ci].name = e.target.value;
+        return;
+      }
+      // Structure is unchanged — just refresh the computed numbers in place.
+      updateComputedOnly();
+    });
+  });
+
+  termsWrap.querySelectorAll('.row-remove').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const ti = e.target.dataset.ti, ci = e.target.dataset.ci;
+      state.terms[ti].courses.splice(ci, 1);
+      render();
+    });
+  });
+
+  termsWrap.querySelectorAll('[data-action="addCourse"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const ti = e.target.dataset.ti;
+      state.terms[ti].courses.push({name:'New course', credit:3, marks:''});
+      render();
+    });
+  });
+
+  termsWrap.querySelectorAll('[data-action="removeTerm"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const ti = e.target.dataset.ti;
+      state.terms.splice(ti, 1);
+      render();
+    });
+  });
+}
+
+document.getElementById('addTermBtn').addEventListener('click', () => {
+  state.terms.push({title: `Term ${state.terms.length + 1}`, courses: [{name:'New course', credit:3, marks:''}]});
+  render();
+});
+
+// Builds a clean, transcript-styled document inside #printArea using the
+// current student details + course/marks state, then opens the browser's
+// print dialog (where the user can choose "Save as PDF" as the destination).
+function buildPrintView(){
+  const printArea = document.getElementById('printArea');
+
+  const name = document.getElementById('stuName').value || '—';
+  const reg = document.getElementById('stuReg').value || '—';
+  const prog = document.getElementById('stuProg').value || '—';
+  const father = document.getElementById('stuFather').value || '—';
+  const mother = document.getElementById('stuMother').value || '—';
+  const mode = document.getElementById('stuMode').value || '—';
+
+  const termsHtml = state.terms.map(term => {
+    const {tgpa, hasAny} = computeTerm(term);
+    const rows = term.courses.map((c, i) => {
+      const g = gradeFor(c.marks);
+      return `
+        <tr>
+          <td>${i+1}</td>
+          <td>${c.name}</td>
+          <td class="num">${Number(c.credit).toFixed(2)}</td>
+          <td class="num">${c.marks === '' ? '—' : c.marks}</td>
+          <td class="num">${g ? g.letter : '—'}</td>
+        </tr>`;
+    }).join('');
+    return `
+      <div class="print-term">
+        <h3><span>${term.title}</span><span>${hasAny ? 'TGPA : '+tgpa.toFixed(2)+'  |  Equivalent : '+(tgpa*10).toFixed(1)+'%' : 'TGPA : —'}</span></h3>
+        <table>
+          <thead><tr><th>S.No.</th><th>Course</th><th class="num">Credit</th><th class="num">Marks</th><th class="num">Grade</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }).join('');
+
+  const cgpa = computeOverall();
+  const today = new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+
+  printArea.innerHTML = `
+    <div class="print-head">
+      <div class="p-crest">LPU Grade Office</div>
+      <h1>Academic Performance Report</h1>
+      <p>Calculated locally from user-entered marks — not an official university document</p>
+    </div>
+    <div class="print-info">
+      <div><span class="k">Student Name:</span>${name}</div>
+      <div><span class="k">Registration No.:</span>${reg}</div>
+      <div><span class="k">Programme:</span>${prog}</div>
+      <div><span class="k">Mode:</span>${mode}</div>
+      <div><span class="k">Father's Name:</span>${father}</div>
+      <div><span class="k">Mother's Name:</span>${mother}</div>
+    </div>
+    ${termsHtml}
+    <div class="print-summary">
+      <span>Overall CGPA: ${cgpa.toFixed(2)}</span>
+      <span>Equivalent Percentage: ${(cgpa*10).toFixed(1)}%</span>
+    </div>
+    <div class="print-footer">
+      <p>This report is generated by a self-service GPA/CGPA calculator based on marks entered by the student and the grading scale: O (90–100, 10pt), A+ (80–89, 9pt), A (70–79, 8pt), B+ (60–69, 7pt), B (50–59, 6pt), C (40–49, 5pt), F (below 40, 0pt).</p>
+      <p>It is not an official Lovely Professional University transcript and carries no institutional seal or signature. For an official record, refer to the University's own Provisional/Final Academic Transcript.</p>
+      <p>Generated on ${today}.</p>
+    </div>
+  `;
+}
+
+document.getElementById('printBtn').addEventListener('click', () => {
+  buildPrintView();
+  // slight delay lets the DOM paint before print dialog opens
+  setTimeout(() => window.print(), 50);
+});
+
+renderScale();
+render();
+</script>
+</body>
+</html>
